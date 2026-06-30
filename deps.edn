@@ -1,0 +1,12 @@
+{:paths ["src"]
+ ;; kotoba-lang/fs — Layer 3 (I/O) of the kotoba foundational stdlib.
+ ;; Pure path ops + an IFilesystem protocol (HOST-INJECTED): the cell never
+ ;; touches the OS directly, only a granted filesystem handle. Zero third-party
+ ;; runtime deps; .cljc. See ADR-kotoba-lang-foundational-stdlib.md.
+ :deps {}
+ :aliases
+ {:test {:extra-paths ["test"]
+         :extra-deps {io.github.cognitect-labs/test-runner
+                      {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+         :main-opts ["-m" "cognitect.test-runner"]
+         :exec-fn cognitect.test-runner.api/test}}}
