@@ -46,3 +46,23 @@
     (fs/write m "dir/b.txt" "2")
     (fs/write m "dir/sub/c.txt" "3")
     (is (= ["a.txt" "b.txt" "sub"] (fs/list m "dir")))))
+
+(deftest mem-filesystem-missing-path-is-nil-not-throw
+  (let [m (fs/mem-filesystem)]
+    ;; reading a missing path returns nil (does not throw)
+    (is (nil? (fs/read m "nope.txt")))
+    (is (false? (fs/exists? m "nope.txt")))
+    ;; deleting a missing path is a no-op (does not throw)
+    (is (nil? (fs/delete m "nope.txt")))
+    ;; listing an empty dir returns an empty vector, not nil
+    (is (= [] (fs/list m "empty")))))
+
+(deftest path-edge-cases
+  ;; ext on a path with no slash and no dot
+  (is (nil? (fs/ext "README")))
+  ;; normalize on a single relative segment
+  (is (= "a" (fs/normalize "a")))
+  ;; normalize on empty path -> "."
+  (is (= "." (fs/normalize "")))
+  ;; join with no args
+  (is (= "" (fs/join))))
