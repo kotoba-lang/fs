@@ -1,4 +1,5 @@
 {:paths ["src"]
+ :version "0.1.0"
  ;; kotoba-lang/fs — Layer 3 (I/O) of the kotoba foundational stdlib.
  ;; Pure path ops + an IFilesystem protocol (HOST-INJECTED): the cell never
  ;; touches the OS directly, only a granted filesystem handle. Zero third-party
