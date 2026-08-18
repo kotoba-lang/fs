@@ -7,7 +7,8 @@
   threw. `refusal-type` returns `nil` when a raw host exception escapes (no
   `ex-data`), so a namespace that leaked an `IOException` fails these tests
   rather than passing them."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [kotoba.lang.fs :as fs]
             [kotoba.lang.fs-host :as host])
   #?(:clj (:import (java.io File)
@@ -261,3 +262,34 @@
   (is (false? (host/under-root? "/a/b" "/a/bc")))
   (is (false? (host/under-root? "/a/b" "/a")))
   (is (true? (host/under-root? "/" "/a"))))
+
+;; ---------------------------------------------------------------------------
+;; the separation itself, checked by machine rather than by review
+;; ---------------------------------------------------------------------------
+
+(defn- read-source
+  "Read a source file relative to the repo root. Both runners (`clojure -M:test`
+  and `nbb --classpath src:test test/run_portable.cljs`) start there. Fails
+  loudly if the file cannot be read -- a check that cannot run must not look
+  like a check that passed."
+  [rel]
+  #?(:clj  (slurp rel)
+     :cljs (.readFileSync node-fs rel "utf8")))
+
+(deftest requiring-kotoba-lang-fs-drags-in-no-host-filesystem
+  (let [src (read-source "src/kotoba/lang/fs.cljc")]
+    ;; evidence floor: an empty or truncated read must not pass as "clean"
+    (is (< 2000 (count src)) "fs.cljc source was actually read")
+    (doseq [needle ["java.nio" "java.io" "js/require" "readFileSync" "fs-host"
+                    "(slurp" "(spit"]]
+      (is (not (str/includes? src needle))
+          (str "kotoba.lang.fs must stay free of host filesystem dependencies, "
+               "found: " needle))))
+  ;; and the host namespace is where all of that lives
+  (let [src (read-source "src/kotoba/lang/fs_host.cljc")]
+    (is (< 2000 (count src)) "fs_host.cljc source was actually read")
+    (is (str/includes? src "java.nio"))
+    (is (str/includes? src "js/require"))
+    ;; no ambient-authority convenience sneaked back in
+    (is (not (str/includes? src "(defn slurp")))
+    (is (not (str/includes? src "(defn spit")))))
