@@ -27,6 +27,63 @@ behind `IFilesystem`, which the host implements and injects. An in-memory
 - `IFilesystem` protocol: `read`, `write`, `list`, `exists?`, `delete`
 - `mem-filesystem` — atom-backed in-memory impl (OSS standalone / tests)
 
+`kotoba.lang.fs-host` (separate namespace — see below):
+
+- `host-filesystem` — an `IFilesystem` backed by the real filesystem,
+  `#?(:clj java.nio/java.io, :cljs node:fs)`, confined to a required `:root`
+- `resolve-relative` — the pure path policy, usable on its own
+- `under-root?`, `error-types`, `max-path-bytes`, `default-max-bytes`
+
+## The real filesystem: `kotoba.lang.fs-host`
+
+`kotoba.lang.fs` stays pure so a kotoba-WASM cell can require it. The binding
+to an actual OS filesystem lives in its own namespace, the way
+`provider.http-transport` sits beside `provider.http` — requiring
+`kotoba.lang.fs` pulls in no `java.nio` and no `node:fs`, and a test greps both
+sources to keep it that way.
+
+```clojure
+(require '[kotoba.lang.fs :as fs]
+         '[kotoba.lang.fs-host :as host])
+
+(def h (host/host-filesystem {:root "/srv/app/data" :max-bytes 1048576}))
+
+(fs/write h "notes/x.txt" "hello")
+(fs/read  h "notes/x.txt")     ;=> "hello"
+(fs/list  h "notes")           ;=> ["x.txt"]
+(fs/read  h "../../etc/passwd") ;=> throws, :type :fs/escape
+```
+
+**`:root` is required and there is no default** — not CWD, not `$HOME`, not
+`/tmp`. Every path is resolved against it and REFUSED, never silently clamped,
+when it tries to leave. The refusal codes are taken verbatim from
+`provider.scoped-fs/resolve-path`:
+
+| `:type`             | refused                                          |
+|---------------------|--------------------------------------------------|
+| `:fs/empty-path`    | blank path, all-blank segments                    |
+| `:fs/null-byte`     | any NUL                                           |
+| `:fs/backslash`     | any `\\`                                          |
+| `:fs/absolute`      | leading `/`                                       |
+| `:fs/home-escape`   | leading `~`                                       |
+| `:fs/path-too-long` | over 1024 UTF-8 bytes                             |
+| `:fs/escape`        | any `.`/`..` segment; a symlink resolving outside |
+| `:fs/not-found`     | missing file or directory                         |
+| `:fs/too-large`     | over `:max-bytes` (checked from `stat`, before reading) |
+| `:fs/is-directory` / `:fs/not-a-directory` | wrong kind of node        |
+| `:fs/io`            | a host failure, with its message under `:fs/message` |
+| `:fs/bad-root`      | `:root` missing, relative, or not a directory     |
+
+Every failure is an `ex-info` with a stable `:type`, so a caller branches on a
+keyword instead of naming `java.io.IOException` (which cannot cross to cljs).
+
+Two things this namespace deliberately does not do: there is **no
+`slurp`/`spit` convenience** (that would restore the ambient authority the
+protocol exists to remove), and `read` of a missing file **throws
+`:fs/not-found`** rather than returning `nil` the way `mem-filesystem` does —
+the one behavioural difference to check when swapping a mem handle for a host
+one.
+
 ## Install
 
 ```clojure
@@ -48,6 +105,11 @@ io.github.kotoba-lang/fs {:git/sha "<sha>"}
 
 ## Verify
 
+Both runtimes run the same suite, against a real temp directory:
+
 ```sh
-clojure -M:test
+clojure -M:test                                  # JVM
+npm run test:cljs                                # nbb / Node
+nbb --classpath src:test test/run_portable.cljs  # the same thing, without npm
+clojure -M:lint
 ```

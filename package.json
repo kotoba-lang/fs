@@ -1,0 +1,10 @@
+{
+  "name": "@kotoba-lang/fs",
+  "private": true,
+  "scripts": {
+    "test:cljs": "nbb --classpath src:test test/run_portable.cljs"
+  },
+  "devDependencies": {
+    "nbb": "^1.4.210"
+  }
+}
