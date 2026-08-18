@@ -228,7 +228,9 @@
                  (refuse! :fs/is-directory "path is a directory" {:fs/path (str path)}))
                (let [parent (.getParentFile f)]
                  (when (and parent (not (.exists parent)))
-                   (when-not (.mkdirs parent)
+                   ;; `.mkdirs` returns false when another writer won the race
+                   ;; and created it first, which is not a failure
+                   (when-not (or (.mkdirs parent) (.isDirectory parent))
                      (refuse! :fs/io "could not create parent directory"
                               {:fs/path (str path)}))
                    ;; a freshly created parent is re-proven under root
