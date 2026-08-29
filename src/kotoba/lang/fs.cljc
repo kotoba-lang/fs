@@ -93,6 +93,28 @@
   (exists? [fs path])
   (delete  [fs path]))
 
+(defprotocol IAsyncFilesystem
+  "Host-injected, non-blocking filesystem capability. Methods return the host
+  runtime's eventual value (`CompletableFuture` on the JVM, `Promise` on
+  JavaScript). The handle retains the same required root and byte bounds as
+  `IFilesystem`; an eventual value is not ambient authority."
+  (read-async    [fs path])
+  (write-async   [fs path content])
+  (list-async    [fs path])
+  (exists-async? [fs path])
+  (delete-async  [fs path]))
+
+(defn eventual-error-type
+  "Recover a stable `:type` through Promise/SCI or Future wrapper causes.
+  Returns nil when no typed cause exists."
+  [error]
+  (loop [e error depth 0]
+    (when (and e (< depth 8))
+      (let [type (:type (ex-data e))]
+        (if (and (keyword? type) (not= :sci/error type))
+          type
+          (recur (ex-cause e) (inc depth)))))))
+
 ;; ---------- in-memory filesystem (OSS standalone / tests) ----------
 
 (defn mem-filesystem

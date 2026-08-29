@@ -74,7 +74,9 @@
             [kotoba.lang.fs :as fs])
   #?(:clj (:import (java.io File)
                    (java.nio.charset StandardCharsets)
-                   (java.nio.file Files OpenOption))))
+                   (java.nio.file Files OpenOption)
+                   (java.util.concurrent CompletableFuture)
+                   (java.util.function Supplier))))
 
 ;; ---------------------------------------------------------------------------
 ;; constants + error vocabulary
@@ -268,6 +270,23 @@
                              (refuse! :fs/io "delete failed" {:fs/path (str path)}))
                            nil)))))))))
 
+#?(:clj
+   (defn async-host-filesystem
+     "A root-confined `IAsyncFilesystem`. Blocking NIO work runs on
+     `CompletableFuture`'s executor rather than the caller thread; path,
+     symlink and byte bounds are delegated to the same proven capability."
+     [opts]
+     (let [sync (host-filesystem opts)
+           submit (fn [f]
+                    (CompletableFuture/supplyAsync
+                     (reify Supplier (get [_] (f)))))]
+       (reify fs/IAsyncFilesystem
+         (read-async [_ path] (submit #(fs/read sync path)))
+         (write-async [_ path content] (submit #(fs/write sync path content)))
+         (list-async [_ path] (submit #(fs/list sync path)))
+         (exists-async? [_ path] (submit #(fs/exists? sync path)))
+         (delete-async [_ path] (submit #(fs/delete sync path)))))))
+
 ;; ---------------------------------------------------------------------------
 ;; Node (nbb / ClojureScript on Node)
 ;; ---------------------------------------------------------------------------
@@ -399,3 +418,103 @@
                                     (refuse! :fs/io "delete failed"
                                              {:fs/path (str path) :fs/message (.-message e)})))
                              nil))))))))))
+
+#?(:cljs
+   (defn- node-async-error! [operation path e]
+     (let [data (ex-data e)
+           cause (ex-cause e)
+           cause-data (when cause (ex-data cause))]
+       (cond
+         (contains? error-types (:type data)) (throw e)
+         (contains? error-types (:type cause-data)) (throw cause)
+         (= "ENOENT" (.-code e))
+         (refuse! :fs/not-found (str "no such " operation) {:fs/path (str path)})
+         :else
+         (refuse! :fs/io (str operation " failed")
+                  {:fs/path (str path) :fs/message (.-message e)})))))
+
+#?(:cljs
+   (defn async-host-filesystem
+     "A root-confined Node `IAsyncFilesystem` backed by `fs.promises`."
+     [{:keys [root max-bytes] :as opts}]
+     (let [node-fs (or (:fs opts) (js/require "fs"))
+           promises (or (:promises opts) (.-promises node-fs))
+           path-mod (or (:path opts) (js/require "path"))
+           max-bytes (or max-bytes default-max-bytes)]
+       (when (or (nil? root) (str/blank? (str root)))
+         (refuse! :fs/bad-root ":root is required"))
+       (let [rs (str root)]
+         (when-not (.isAbsolute path-mod rs)
+           (refuse! :fs/bad-root ":root must be absolute" {:fs/path rs}))
+         (when-not (and (.existsSync node-fs rs) (.isDirectory (.statSync node-fs rs)))
+           (refuse! :fs/bad-root ":root must be an existing directory" {:fs/path rs}))
+         (let [root-c (or (realpath-or-nil node-fs rs)
+                          (refuse! :fs/io "root realpath failed" {:fs/path rs}))
+               resolve* (fn [path]
+                          (.then (js/Promise.resolve nil)
+                                 #(resolve-node-path node-fs path-mod root-c path)))
+               typed (fn [promise operation path]
+                       (.catch promise #(node-async-error! operation path %)))]
+           (reify fs/IAsyncFilesystem
+             (read-async [_ path]
+               (typed
+                (.then (resolve* path)
+                       (fn [p]
+                         (.then (.stat promises p)
+                                (fn [st]
+                                  (when (.isDirectory st)
+                                    (refuse! :fs/is-directory "path is a directory"
+                                             {:fs/path (str path)}))
+                                  (bounded! (.-size st) max-bytes "file" (str path))
+                                  (.then (.readFile promises p "utf8")
+                                         (fn [s]
+                                           (bounded! (utf8-byte-count s) max-bytes
+                                                     "file" (str path))
+                                           s))))))
+                "file" path))
+             (write-async [_ path content]
+               (typed
+                (.then (resolve* path)
+                       (fn [p]
+                         (let [s (str content) parent (.dirname path-mod p)]
+                           (bounded! (utf8-byte-count s) max-bytes "content" (str path))
+                           (.then (.mkdir promises parent #js {:recursive true})
+                                  (fn [_]
+                                    (.then (.realpath promises parent)
+                                           (fn [real-parent]
+                                             (when-not (under-root? root-c real-parent)
+                                               (refuse! :fs/escape "parent escapes root"
+                                                        {:fs/path (str path)}))
+                                             (.then (.writeFile promises p s "utf8")
+                                                    (fn [_] nil)))))))))
+                "write" path))
+             (list-async [_ path]
+               (typed
+                (.then (resolve* path)
+                       (fn [p]
+                         (.then (.stat promises p)
+                                (fn [st]
+                                  (when-not (.isDirectory st)
+                                    (refuse! :fs/not-a-directory "path is not a directory"
+                                             {:fs/path (str path)}))
+                                  (.then (.readdir promises p)
+                                         #(vec (sort (js->clj %))))))))
+                "directory" path))
+             (exists-async? [_ path]
+               (.then (resolve* path)
+                      (fn [p]
+                        (.then (.access promises p) (fn [_] true) (fn [_] false)))))
+             (delete-async [_ path]
+               (typed
+                (.then (resolve* path)
+                       (fn [p]
+                         (.then (.stat promises p)
+                                (fn [st]
+                                  (when (.isDirectory st)
+                                    (refuse! :fs/is-directory
+                                             "refusing to delete a directory"
+                                             {:fs/path (str path)}))
+                                  (.then (.unlink promises p) (fn [_] nil)))
+                                (fn [e]
+                                  (if (= "ENOENT" (.-code e)) nil (throw e))))))
+                "delete" path))))))))

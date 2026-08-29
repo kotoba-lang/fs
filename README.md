@@ -1,7 +1,5 @@
 # kotoba-lang/fs
 
-[![CI](https://github.com/kotoba-lang/fs/actions/workflows/ci.yml/badge.svg)](https://github.com/kotoba-lang/fs/actions/workflows/ci.yml)
-
 **Layer 3 (I/O) of the kotoba foundational stdlib** — pure path manipulation
 plus an `IFilesystem` **protocol** the host injects. A capability-confined cell
 never touches the OS directly; it only sees a filesystem handle the host
@@ -25,12 +23,16 @@ behind `IFilesystem`, which the host implements and injects. An in-memory
 - Pure path ops: `join`, `split`, `basename`, `dirname`, `normalize`, `ext`,
   `relative?`, `absolute?`
 - `IFilesystem` protocol: `read`, `write`, `list`, `exists?`, `delete`
+- `IAsyncFilesystem` protocol: `read-async`, `write-async`, `list-async`,
+  `exists-async?`, `delete-async`
 - `mem-filesystem` — atom-backed in-memory impl (OSS standalone / tests)
 
 `kotoba.lang.fs-host` (separate namespace — see below):
 
 - `host-filesystem` — an `IFilesystem` backed by the real filesystem,
   `#?(:clj java.nio/java.io, :cljs node:fs)`, confined to a required `:root`
+- `async-host-filesystem` — the same capability and refusal vocabulary through
+  `CompletableFuture` on JVM and native `fs.promises` on Node
 - `resolve-relative` — the pure path policy, usable on its own
 - `under-root?`, `error-types`, `max-path-bytes`, `default-max-bytes`
 
@@ -53,6 +55,13 @@ sources to keep it that way.
 (fs/list  h "notes")           ;=> ["x.txt"]
 (fs/read  h "../../etc/passwd") ;=> throws, :type :fs/escape
 ```
+
+The asynchronous handle performs the same canonical root proof and byte bounds
+before dispatch. It never accepts a path or authority that the synchronous
+handle would refuse. JVM work leaves the caller thread through a
+`CompletableFuture`; Node uses `fs.promises` rather than wrapping synchronous
+I/O in a resolved Promise. `eventual-error-type` recovers the stable refusal
+keyword across Future/Promise/SCI wrapper causes.
 
 **`:root` is required and there is no default** — not CWD, not `$HOME`, not
 `/tmp`. Every path is resolved against it and REFUSED, never silently clamped,
