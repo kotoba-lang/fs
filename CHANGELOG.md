@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add a root-confined `IAsyncFilesystem` host capability using
+  `CompletableFuture` on JVM and `fs.promises` on Node, with real round-trip and
+  escape-refusal tests on both runtimes.
+
 All notable changes to kotoba-lang/fs are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/). Semver per the
 kotoba-lang stdlib compatibility policy (kotoba-lang/kotoba-lang/docs/lang/stdlib-versioning.md).

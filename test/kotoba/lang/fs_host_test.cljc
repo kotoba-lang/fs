@@ -76,6 +76,16 @@
 (defn- fs-under [root & {:as opts}]
   (host/host-filesystem (merge {:root root} opts)))
 
+#?(:clj
+   (defn- await-result [future]
+     (.get ^java.util.concurrent.CompletableFuture future)))
+
+#?(:clj
+   (defn- async-refusal-type [future]
+     (try (await-result future) ::no-throw
+          (catch java.util.concurrent.ExecutionException e
+            (fs/eventual-error-type e)))))
+
 ;; ---------------------------------------------------------------------------
 ;; happy paths, on a real filesystem
 ;; ---------------------------------------------------------------------------
@@ -91,6 +101,23 @@
     (fs/write h "notes/hello.txt" "bye")
     (is (= "bye" (fs/read h "notes/hello.txt")))
     (is (= "bye" (slurp-real (str root "/notes/hello.txt"))))))
+
+#?(:clj
+   (deftest async-capability-roundtrip-and-confinement
+     (let [root (temp-root)
+           h (host/async-host-filesystem {:root root :max-bytes 32})]
+       (is (instance? java.util.concurrent.CompletableFuture
+                      (fs/write-async h "async/a.txt" "hello")))
+       (is (nil? (await-result (fs/write-async h "async/a.txt" "hello"))))
+       (is (= "hello" (await-result (fs/read-async h "async/a.txt"))))
+       (is (= ["a.txt"] (await-result (fs/list-async h "async"))))
+       (is (true? (await-result (fs/exists-async? h "async/a.txt"))))
+       (is (= :fs/escape (async-refusal-type (fs/read-async h "../secret"))))
+       (is (= :fs/too-large
+              (async-refusal-type
+               (fs/write-async h "async/big.txt" (apply str (repeat 33 "x"))))))
+       (is (nil? (await-result (fs/delete-async h "async/a.txt"))))
+       (is (false? (await-result (fs/exists-async? h "async/a.txt")))))))
 
 (deftest exists-before-and-after-delete
   (let [h (fs-under (temp-root))]
