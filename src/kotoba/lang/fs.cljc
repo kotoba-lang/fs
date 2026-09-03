@@ -8,7 +8,7 @@
   the OS. An in-memory mem-filesystem is provided for tests / OSS standalone.
 
   Zero third-party runtime deps; .cljc (JVM / SCI / CLJS / GraalVM / kotoba-WASM)."
-  (:refer-clojure :exclude [read write])
+  (:refer-clojure :exclude [read write list])
   #?(:clj  (:require [clojure.string :as str])
      :cljs (:require [clojure.string :as str])))
 
