@@ -87,8 +87,9 @@
 ;; ---------- IFilesystem protocol (host-injected) ----------
 
 (defprotocol IFilesystem
-  (read    [fs path])
-  (write   [fs path content])
+  (read       [fs path])
+  (read-bytes [fs path])
+  (write      [fs path content])
   (list    [fs path])
   (exists? [fs path])
   (delete  [fs path]))
@@ -124,7 +125,11 @@
   []
   (let [store (atom {})]
     (reify IFilesystem
-      (read    [_ path] (get @store path))
+      (read       [_ path] (get @store path))
+      (read-bytes [_ path]
+        (let [v (get @store path)]
+          (when (string? v)
+            (mapv int (seq v)))))
       (write   [_ path content] (swap! store assoc path content) nil)
       (list    [_ path]
         (let [prefix (if (= path sep) sep (str path sep))

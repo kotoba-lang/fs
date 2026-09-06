@@ -66,3 +66,13 @@
   (is (= "." (fs/normalize "")))
   ;; join with no args
   (is (= "" (fs/join))))
+
+(deftest read-bytes-protocol-test
+  (testing "read-bytes is a host-injected IFilesystem method returning unsigned bytes"
+    (let [mem (fs/mem-filesystem)]
+      (fs/write mem "/f.txt" "hello")
+      (let [bs (fs/read-bytes mem "/f.txt")]
+        (is (vector? bs))
+        (is (every? (fn [b] (and (<= 0 b) (<= b 255))) bs))
+        (is (seq bs))))))
+
