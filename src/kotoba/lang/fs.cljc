@@ -84,12 +84,42 @@
       (empty? stack) "."
       :else joined)))
 
+;; ---------- UTF-8 <-> unsigned byte vector ----------
+;;
+;; The byte face of this library speaks ONE representation: a vector of
+;; unsigned integers 0-255. Not a host byte[], not a Uint8Array, not a seq of
+;; characters -- those are three different things on three different hosts and
+;; a protocol that returns "whatever the host had" is not a portable protocol.
+;;
+;; Unsigned matters. A JVM byte is signed, so a raw `(vec (.getBytes s))` hands
+;; back -61 where every other host says 195, and code that round-trips it
+;; writes a different file than it read. Both directions below normalise.
+
+(defn utf8-bytes
+  "UTF-8 encode `text` into a vector of unsigned bytes (0-255)."
+  [text]
+  #?(:clj  (mapv #(bit-and (long %) 0xff)
+                 (.getBytes ^String (str text) "UTF-8"))
+     :cljs (vec (.encode (js/TextEncoder.) (str text)))))
+
+(defn utf8-text
+  "Decode a collection of unsigned bytes (0-255) as UTF-8 text."
+  [bytes]
+  #?(:clj  (String. (byte-array (mapv #(unchecked-byte (long %)) bytes)) "UTF-8")
+     :cljs (.decode (js/TextDecoder. "utf-8")
+                    (js/Uint8Array.from (into-array (mapv int bytes))))))
+
 ;; ---------- IFilesystem protocol (host-injected) ----------
 
 (defprotocol IFilesystem
   (read       [fs path])
   (read-bytes [fs path])
   (write      [fs path content])
+  ;; write-bytes is the missing half of read-bytes. Without it the byte face
+  ;; is read-only, so no byte-exact copy is expressible and every binary
+  ;; round-trip has to go through UTF-8 text -- which silently corrupts any
+  ;; content that is not valid UTF-8.
+  (write-bytes [fs path bytes])
   (list    [fs path])
   (exists? [fs path])
   (delete  [fs path]))
@@ -125,12 +155,21 @@
   []
   (let [store (atom {})]
     (reify IFilesystem
-      (read       [_ path] (get @store path))
+      ;; A stored value is a string (written as text), a vector of unsigned
+      ;; bytes (written as bytes), or nil (a directory placeholder). read and
+      ;; read-bytes each convert whichever one is there, so the two faces
+      ;; agree no matter which one wrote the file.
+      (read       [_ path]
+        (let [v (get @store path)]
+          (if (vector? v) (utf8-text v) v)))
       (read-bytes [_ path]
         (let [v (get @store path)]
-          (when (string? v)
-            (mapv int (seq v)))))
-      (write   [_ path content] (swap! store assoc path content) nil)
+          (cond
+            (vector? v) v
+            (string? v) (utf8-bytes v))))
+      (write   [_ path content] (swap! store assoc path (str content)) nil)
+      (write-bytes [_ path bytes]
+        (swap! store assoc path (mapv #(bit-and (int %) 0xff) bytes)) nil)
       (list    [_ path]
         (let [prefix (if (= path sep) sep (str path sep))
               ks (keys @store)]
@@ -143,3 +182,28 @@
                vec)))
       (exists? [_ path] (contains? @store path))
       (delete  [_ path] (swap! store dissoc path) nil))))
+
+;; ---------- derived operations ----------
+;;
+;; The classpath-era `make-parents` has NO counterpart here and needs none:
+;; `write`/`write-bytes` already create the parent directory (see
+;; the host namespace). A migrated call site DELETES its make-parents call
+;; rather than translating it.
+
+(defn copy
+  "Byte-exact copy of `src` to `dst`. With three arguments both paths are on
+  the same handle; with four, `src` is read from `src-fs` and written to
+  `dst-fs`, which is how a copy crosses two separately granted roots.
+
+  Goes through the byte face, not the text face, so content that is not valid
+  UTF-8 survives. Returns nil.
+
+  There is no `:replace`/`:append` option: `write-bytes` replaces, which is
+  what a host-level `copy` into a file does."
+  ([fs src dst] (copy fs src fs dst))
+  ([src-fs src dst-fs dst]
+   (let [bytes (read-bytes src-fs src)]
+     (when (nil? bytes)
+       (throw (ex-info "no such file" {:type :fs/not-found :fs/path (str src)})))
+     (write-bytes dst-fs dst bytes)
+     nil)))
