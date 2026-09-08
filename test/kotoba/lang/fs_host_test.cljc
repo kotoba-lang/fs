@@ -7,7 +7,7 @@
   threw. `refusal-type` returns `nil` when a raw host exception escapes (no
   `ex-data`), so a namespace that leaked an `IOException` fails these tests
   rather than passing them."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is testing]]
             [kotoba.lang.fs :as fs]
             [kotoba.lang.fs-host :as host])
