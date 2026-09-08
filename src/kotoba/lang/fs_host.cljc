@@ -188,6 +188,33 @@
        (File. cpath))))
 
 #?(:clj
+   (defn- prepare-write!
+     "Refuse a write onto a directory, then make sure the parent exists and is
+     still under the root. Shared by `write` and `write-bytes` so the two
+     cannot drift apart on the escape check."
+     [^String root-c ^File f path]
+     (when (.isDirectory f)
+       (refuse! :fs/is-directory "path is a directory" {:fs/path (str path)}))
+     (let [parent (.getParentFile f)]
+       (when (and parent (not (.exists parent)))
+         ;; `.mkdirs` returns false when another writer won the race and
+         ;; created it first, which is not a failure
+         (when-not (or (.mkdirs parent) (.isDirectory parent))
+           (refuse! :fs/io "could not create parent directory"
+                    {:fs/path (str path)}))
+         ;; a freshly created parent is re-proven under root
+         (when-not (under-root? root-c (canonical-or-refuse parent))
+           (refuse! :fs/escape "parent escapes root" {:fs/path (str path)}))))))
+
+#?(:clj
+   (defn- jvm-write-bytes! [^File f path ^bytes bytes]
+     (try (Files/write (.toPath f) bytes (into-array OpenOption []))
+          (catch Exception e
+            (refuse! :fs/io "write failed"
+                     {:fs/path (str path) :fs/message (.getMessage e)})))
+     nil))
+
+#?(:clj
    (defn host-filesystem
      "An `IFilesystem` backed by the JVM filesystem, confined to `:root`.
 
@@ -226,23 +253,36 @@
              (let [^File f (resolve-file root-c path)
                    ^bytes bytes (.getBytes (str content) StandardCharsets/UTF_8)]
                (bounded! (alength bytes) max-bytes "content" (str path))
+               (prepare-write! root-c f path)
+               (jvm-write-bytes! f path bytes)))
+
+           ;; The byte face. `read-bytes`/`write-bytes` were on the protocol
+           ;; before this reify implemented them, so every call against a real
+           ;; host filesystem threw AbstractMethodError while the mem-backed
+           ;; tests stayed green -- the suite was testing the other
+           ;; implementation. The host round-trip test now covers this.
+           (read-bytes [_ path]
+             (let [^File f (resolve-file root-c path)]
+               (when-not (.exists f)
+                 (refuse! :fs/not-found "no such file" {:fs/path (str path)}))
                (when (.isDirectory f)
                  (refuse! :fs/is-directory "path is a directory" {:fs/path (str path)}))
-               (let [parent (.getParentFile f)]
-                 (when (and parent (not (.exists parent)))
-                   ;; `.mkdirs` returns false when another writer won the race
-                   ;; and created it first, which is not a failure
-                   (when-not (or (.mkdirs parent) (.isDirectory parent))
-                     (refuse! :fs/io "could not create parent directory"
-                              {:fs/path (str path)}))
-                   ;; a freshly created parent is re-proven under root
-                   (when-not (under-root? root-c (canonical-or-refuse parent))
-                     (refuse! :fs/escape "parent escapes root" {:fs/path (str path)}))))
-               (try (Files/write (.toPath f) bytes (into-array OpenOption []))
-                    (catch Exception e
-                      (refuse! :fs/io "write failed"
-                               {:fs/path (str path) :fs/message (.getMessage e)})))
-               nil))
+               (bounded! (.length f) max-bytes "file" (str path))
+               (let [bytes (try (Files/readAllBytes (.toPath f))
+                                (catch Exception e
+                                  (refuse! :fs/io "read failed"
+                                           {:fs/path (str path)
+                                            :fs/message (.getMessage e)})))]
+                 (bounded! (alength ^bytes bytes) max-bytes "file" (str path))
+                 ;; unsigned, so a byte reads the same here as on Node
+                 (mapv #(bit-and (long %) 0xff) bytes))))
+
+           (write-bytes [_ path data]
+             (let [^File f (resolve-file root-c path)
+                   ^bytes bytes (byte-array (mapv #(unchecked-byte (long %)) data))]
+               (bounded! (alength bytes) max-bytes "content" (str path))
+               (prepare-write! root-c f path)
+               (jvm-write-bytes! f path bytes)))
 
            (list [_ path]
              (let [^File f (resolve-file root-c path)]
@@ -385,6 +425,45 @@
                        (when-not (and pr (under-root? root-c pr))
                          (refuse! :fs/escape "parent escapes root" {:fs/path (str path)})))))
                  (try (.writeFileSync node-fs p s "utf8")
+                      (catch :default e
+                        (refuse! :fs/io "write failed"
+                                 {:fs/path (str path) :fs/message (.-message e)})))
+                 nil))
+
+             ;; The byte face -- see the note on the JVM reify above; this
+             ;; side was missing it too.
+             (read-bytes [_ path]
+               (let [p (resolve-node-path node-fs path-mod root-c path)]
+                 (when-not (.existsSync node-fs p)
+                   (refuse! :fs/not-found "no such file" {:fs/path (str path)}))
+                 (let [st (.statSync node-fs p)]
+                   (when (.isDirectory st)
+                     (refuse! :fs/is-directory "path is a directory" {:fs/path (str path)}))
+                   (bounded! (.-size st) max-bytes "file" (str path)))
+                 (let [buf (try (.readFileSync node-fs p)
+                                (catch :default e
+                                  (refuse! :fs/io "read failed"
+                                           {:fs/path (str path) :fs/message (.-message e)})))]
+                   (bounded! (.-length buf) max-bytes "file" (str path))
+                   (vec (js/Uint8Array.from buf)))))
+
+             (write-bytes [_ path data]
+               (let [p    (resolve-node-path node-fs path-mod root-c path)
+                     arr  (js/Uint8Array.from (into-array (mapv #(bit-and (int %) 0xff) data)))]
+                 (bounded! (.-length arr) max-bytes "content" (str path))
+                 (when (and (.existsSync node-fs p)
+                            (.isDirectory (.statSync node-fs p)))
+                   (refuse! :fs/is-directory "path is a directory" {:fs/path (str path)}))
+                 (let [parent (.dirname path-mod p)]
+                   (when-not (.existsSync node-fs parent)
+                     (try (.mkdirSync node-fs parent #js {:recursive true})
+                          (catch :default e
+                            (refuse! :fs/io "could not create parent directory"
+                                     {:fs/path (str path) :fs/message (.-message e)})))
+                     (let [pr (realpath-or-nil node-fs parent)]
+                       (when-not (and pr (under-root? root-c pr))
+                         (refuse! :fs/escape "parent escapes root" {:fs/path (str path)})))))
+                 (try (.writeFileSync node-fs p arr)
                       (catch :default e
                         (refuse! :fs/io "write failed"
                                  {:fs/path (str path) :fs/message (.-message e)})))

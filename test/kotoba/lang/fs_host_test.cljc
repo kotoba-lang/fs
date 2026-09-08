@@ -320,3 +320,87 @@
     ;; no ambient-authority convenience sneaked back in
     (is (not (str/includes? src "(defn slurp")))
     (is (not (str/includes? src "(defn spit")))))
+
+;; ---------------------------------------------------------------------------
+;; the byte face, against the real host
+;; ---------------------------------------------------------------------------
+;;
+;; `read-bytes` was on IFilesystem, and implemented by mem-filesystem, before
+;; either host reify implemented it: every call against a real filesystem threw
+;; "No implementation of method: :read-bytes" while the suite stayed green,
+;; because the only test of it ran on the OTHER implementation. These tests are
+;; against the host on purpose.
+
+(deftest read-bytes-returns-unsigned-utf8-bytes-from-the-real-host
+  (let [root (temp-root)
+        h    (fs-under root)]
+    (fs/write h "t.txt" "あA")             ; U+3042 = E3 81 82
+    ;; unsigned, not the JVM's signed byte (-29 -127 -126)
+    (is (= [227 129 130 65] (fs/read-bytes h "t.txt")))
+    ;; and the two faces agree with each other
+    (is (= (fs/read-bytes h "t.txt") (fs/utf8-bytes (fs/read h "t.txt"))))))
+
+(deftest write-bytes-round-trips-content-that-is-not-text
+  (let [root (temp-root)
+        h    (fs-under root)
+        ;; 0 and 255 are the discriminating values: 0 terminates a C string,
+        ;; 255 is not a valid standalone UTF-8 byte, so a byte face that is
+        ;; secretly going through UTF-8 text mangles both.
+        blob [0 255 128 10 13 65]]
+    (fs/write-bytes h "bin/blob.dat" blob)
+    (is (= blob (fs/read-bytes h "bin/blob.dat")))
+    ;; write-bytes creates the parent directory, exactly as write does
+    (is (fs/exists? h "bin/blob.dat"))))
+
+(deftest write-bytes-and-write-see-the-same-file
+  (let [root (temp-root)
+        h    (fs-under root)]
+    (fs/write-bytes h "x" (fs/utf8-bytes "あA"))
+    (is (= "あA" (fs/read h "x")))
+    (fs/write h "x" "plain")
+    (is (= (fs/utf8-bytes "plain") (fs/read-bytes h "x")))))
+
+(deftest copy-is-byte-exact-and-creates-parents
+  (let [root (temp-root)
+        h    (fs-under root)
+        blob [0 255 128 66]]
+    (fs/write-bytes h "src.dat" blob)
+    (fs/copy h "src.dat" "deep/er/dst.dat")
+    (is (= blob (fs/read-bytes h "deep/er/dst.dat")))
+    ;; the source is untouched
+    (is (= blob (fs/read-bytes h "src.dat")))))
+
+(deftest copy-across-two-separately-granted-roots
+  (let [a (fs-under (temp-root))
+        b (fs-under (temp-root))]
+    (fs/write a "note.txt" "あ")
+    (fs/copy a "note.txt" b "copied/note.txt")
+    (is (= "あ" (fs/read b "copied/note.txt")))
+    ;; and it stayed inside b's root -- a path that escapes is still refused
+    (is (= :fs/escape (refusal-type #(fs/copy a "note.txt" b "../out.txt"))))))
+
+(deftest byte-face-refusals-carry-the-same-types-as-the-text-face
+  (let [root (temp-root)
+        h    (fs-under root)]
+    (is (= :fs/not-found  (refusal-type #(fs/read-bytes h "missing.txt"))))
+    (is (= :fs/absolute   (refusal-type #(fs/read-bytes h "/etc/passwd"))))
+    (is (= :fs/escape     (refusal-type #(fs/write-bytes h "../out.dat" [1]))))
+    (fs/write h "d/f" "x")
+    (is (= :fs/is-directory (refusal-type #(fs/read-bytes h "d"))))
+    ;; and the bound applies to the byte face too
+    (let [small (fs-under root :max-bytes 4)]
+      (is (= :fs/too-large (refusal-type #(fs/write-bytes small "big.dat" [1 2 3 4 5])))))))
+
+(deftest host-and-mem-agree-on-the-byte-face
+  ;; The mem-filesystem is what tests inject; if it disagrees with the host on
+  ;; bytes, a test that passes on mem proves nothing about production.
+  (let [h (fs-under (temp-root))
+        m (fs/mem-filesystem)]
+    (doseq [text ["" "A" "あA" "line\nline"]]
+      (fs/write h "f" text)
+      (fs/write m "f" text)
+      (is (= (fs/read-bytes m "f") (fs/read-bytes h "f")) (pr-str text)))
+    (doseq [blob [[] [0] [255 254] [0 255 128 10]]]
+      (fs/write-bytes h "b" blob)
+      (fs/write-bytes m "b" blob)
+      (is (= (fs/read-bytes m "b") (fs/read-bytes h "b")) (pr-str blob)))))
