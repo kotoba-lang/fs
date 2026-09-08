@@ -70,7 +70,7 @@
   `nil`, matching the mem impl.
 
   Zero third-party deps."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [kotoba.lang.fs :as fs])
   #?(:clj (:import (java.io File)
                    (java.nio.charset StandardCharsets)
