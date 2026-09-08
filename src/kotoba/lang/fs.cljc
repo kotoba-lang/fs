@@ -9,8 +9,8 @@
 
   Zero third-party runtime deps; .cljc (JVM / SCI / CLJS / GraalVM / kotoba-WASM)."
   (:refer-clojure :exclude [read write list])
-  #?(:clj  (:require [clojure.string :as str])
-     :cljs (:require [clojure.string :as str])))
+  #?(:clj  (:require [kotoba.lang.text :as str])
+     :cljs (:require [kotoba.lang.text :as str])))
 
 (def ^:private sep "/")
 
