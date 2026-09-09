@@ -7,49 +7,50 @@
  :deps {
         io.github.kotoba-lang/fs-async-filesystem
         {:git/url "https://github.com/kotoba-lang/fs-async-filesystem.git"
-         :git/sha "9e8973e1ac48fe269204ddf67b085151159ed670"}
+         :git/sha "05ce6f3b1dcc3008b7047a13be35c45689cf182e"}
         io.github.kotoba-lang/fs-filesystem
         {:git/url "https://github.com/kotoba-lang/fs-filesystem.git"
-         :git/sha "118225c40d5f9f21ed517773c4faff1dc9a012e2"}
+         :git/sha "6908b7d397fe4ac84a4b8993eb60f8af4c056780"}
         io.github.kotoba-lang/fs-absolute
         {:git/url "https://github.com/kotoba-lang/fs-absolute.git"
-         :git/sha "c80c3e7ce0387b3475a8e21d0d0e68a16aae526c"}
+         :git/sha "8dc0c455558ef531f074f55d1da68fdf80121187"}
         io.github.kotoba-lang/fs-basename
         {:git/url "https://github.com/kotoba-lang/fs-basename.git"
-         :git/sha "a9784a91077c7533fdc1791da5d7924fcb3c7cfe"}
+         :git/sha "b51fd604720bad26130f38518c39aa1565c2968d"}
         io.github.kotoba-lang/fs-copy
         {:git/url "https://github.com/kotoba-lang/fs-copy.git"
-         :git/sha "03cedbb51b1a78003e251a86790fb46f64218679"}
+         :git/sha "949591b8b285d92a45066b241808de637c1faeb4"}
         io.github.kotoba-lang/fs-dirname
         {:git/url "https://github.com/kotoba-lang/fs-dirname.git"
-         :git/sha "1a2c65b41ec2cf777978a451332eb3e194857e90"}
+         :git/sha "caa968f0b0069624ac93905ecf61b3cc2fa1b6ca"}
         io.github.kotoba-lang/fs-eventual-error-type
         {:git/url "https://github.com/kotoba-lang/fs-eventual-error-type.git"
-         :git/sha "e50687463e861d9441707b87df6f93d4cbf466f6"}
+         :git/sha "bf823f0cc4998914ab4156b97c05a135d6eb6a38"}
         io.github.kotoba-lang/fs-ext
         {:git/url "https://github.com/kotoba-lang/fs-ext.git"
-         :git/sha "c30533229b43508f708a1152587742fef61bdd9c"}
+         :git/sha "d739231f70e7833b62b670bf008ddee02799ba8e"}
         io.github.kotoba-lang/fs-join
         {:git/url "https://github.com/kotoba-lang/fs-join.git"
-         :git/sha "c2e2f8631633e1edef98e12fb20b1627f5a4aef5"}
+         :git/sha "73b16f48249a3582515360b2dc0294854b04c7f4"}
         io.github.kotoba-lang/fs-mem-filesystem
         {:git/url "https://github.com/kotoba-lang/fs-mem-filesystem.git"
-         :git/sha "a38258dd1343da8582838252b7692ee84dddd704"}
+         :git/sha "e188ae43d3ec9fe9b239221b86427229fec1f2aa"}
         io.github.kotoba-lang/fs-normalize
         {:git/url "https://github.com/kotoba-lang/fs-normalize.git"
-         :git/sha "a3423271450ef1b84d62c91c3a0d0f940fe30ad5"}
+         :git/sha "552abe74637f39056a0dd6ca19b209b2740946ec"}
         io.github.kotoba-lang/fs-relative
         {:git/url "https://github.com/kotoba-lang/fs-relative.git"
-         :git/sha "ff4beb8cb89e8d8e8047ad6ff1d2417db138a26c"}
+         :git/sha "31b72d7c743d4b583ea16e2a09d76a4cdd8de1df"}
         io.github.kotoba-lang/fs-split
         {:git/url "https://github.com/kotoba-lang/fs-split.git"
-         :git/sha "2bf33c8e48d3316ca345a1cf59347f7b35f9882c"}
+         :git/sha "828c362d4563f2bce08ee6fa5bc974c761b9503e"}
         io.github.kotoba-lang/fs-utf8-bytes
         {:git/url "https://github.com/kotoba-lang/fs-utf8-bytes.git"
-         :git/sha "5f2e24f1118bb66f1007d33015a89e25462e255a"}
+         :git/sha "cf73be749662efc9228c4d040cae61fdf8ab4f18"}
         io.github.kotoba-lang/fs-utf8-text
         {:git/url "https://github.com/kotoba-lang/fs-utf8-text.git"
-         :git/sha "6c0a0c1a441c1279ce73743a52c03f584288f1ae"}
+         :git/sha "d5cd6d88297a903493b5914b35005fee6afd0520"}
+
 
 
         ;; kotoba.lang.text, not clojure.string. Pinned as an explicit floor:
