@@ -5,8 +5,8 @@
   that each live in their own repo, so a call site can require one name
   and a library can require only the definitions it actually uses."
   (:refer-clojure :exclude [list read write])
-  (:require [kotoba.fs.iasync-filesystem :as iasync-filesystem-ns]
-            [kotoba.fs.ifilesystem :as ifilesystem-ns]
+  (:require [kotoba.fs.async-filesystem :as iasync-filesystem-ns]
+            [kotoba.fs.filesystem :as ifilesystem-ns]
             [kotoba.fs.absolute :as absolute-ns]
             [kotoba.fs.basename :as basename-ns]
             [kotoba.fs.copy :as copy-ns]
@@ -24,25 +24,25 @@
 (def absolute? "See kotoba.fs.absolute/absolute?." absolute-ns/absolute?)
 (def basename "See kotoba.fs.basename/basename." basename-ns/basename)
 (def copy "See kotoba.fs.copy/copy." copy-ns/copy)
-(def delete "See kotoba.fs.ifilesystem/delete." ifilesystem-ns/delete)
-(def delete-async "See kotoba.fs.iasync-filesystem/delete-async." iasync-filesystem-ns/delete-async)
+(def delete "See kotoba.fs.filesystem/delete." ifilesystem-ns/delete)
+(def delete-async "See kotoba.fs.async-filesystem/delete-async." iasync-filesystem-ns/delete-async)
 (def dirname "See kotoba.fs.dirname/dirname." dirname-ns/dirname)
 (def eventual-error-type "See kotoba.fs.eventual-error-type/eventual-error-type." eventual-error-type-ns/eventual-error-type)
-(def exists-async? "See kotoba.fs.iasync-filesystem/exists-async?." iasync-filesystem-ns/exists-async?)
-(def exists? "See kotoba.fs.ifilesystem/exists?." ifilesystem-ns/exists?)
+(def exists-async? "See kotoba.fs.async-filesystem/exists-async?." iasync-filesystem-ns/exists-async?)
+(def exists? "See kotoba.fs.filesystem/exists?." ifilesystem-ns/exists?)
 (def ext "See kotoba.fs.ext/ext." ext-ns/ext)
 (def join "See kotoba.fs.join/join." join-ns/join)
-(def list "See kotoba.fs.ifilesystem/list." ifilesystem-ns/list)
-(def list-async "See kotoba.fs.iasync-filesystem/list-async." iasync-filesystem-ns/list-async)
+(def list "See kotoba.fs.filesystem/list." ifilesystem-ns/list)
+(def list-async "See kotoba.fs.async-filesystem/list-async." iasync-filesystem-ns/list-async)
 (def mem-filesystem "See kotoba.fs.mem-filesystem/mem-filesystem." mem-filesystem-ns/mem-filesystem)
 (def normalize "See kotoba.fs.normalize/normalize." normalize-ns/normalize)
-(def read "See kotoba.fs.ifilesystem/read." ifilesystem-ns/read)
-(def read-async "See kotoba.fs.iasync-filesystem/read-async." iasync-filesystem-ns/read-async)
-(def read-bytes "See kotoba.fs.ifilesystem/read-bytes." ifilesystem-ns/read-bytes)
+(def read "See kotoba.fs.filesystem/read." ifilesystem-ns/read)
+(def read-async "See kotoba.fs.async-filesystem/read-async." iasync-filesystem-ns/read-async)
+(def read-bytes "See kotoba.fs.filesystem/read-bytes." ifilesystem-ns/read-bytes)
 (def relative? "See kotoba.fs.relative/relative?." relative-ns/relative?)
 (def split "See kotoba.fs.split/split." split-ns/split)
 (def utf8-bytes "See kotoba.fs.utf8-bytes/utf8-bytes." utf8-bytes-ns/utf8-bytes)
 (def utf8-text "See kotoba.fs.utf8-text/utf8-text." utf8-text-ns/utf8-text)
-(def write "See kotoba.fs.ifilesystem/write." ifilesystem-ns/write)
-(def write-async "See kotoba.fs.iasync-filesystem/write-async." iasync-filesystem-ns/write-async)
-(def write-bytes "See kotoba.fs.ifilesystem/write-bytes." ifilesystem-ns/write-bytes)
+(def write "See kotoba.fs.filesystem/write." ifilesystem-ns/write)
+(def write-async "See kotoba.fs.async-filesystem/write-async." iasync-filesystem-ns/write-async)
+(def write-bytes "See kotoba.fs.filesystem/write-bytes." ifilesystem-ns/write-bytes)
