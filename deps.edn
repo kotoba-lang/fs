@@ -5,6 +5,52 @@
  ;; touches the OS directly, only a granted filesystem handle. Zero third-party
  ;; runtime deps; .cljc. See ADR-kotoba-lang-foundational-stdlib.md.
  :deps {
+        io.github.kotoba-lang/fs-iasync-filesystem
+        {:git/url "https://github.com/kotoba-lang/fs-iasync-filesystem.git"
+         :git/sha "c9596d6fa889a3ca2f6478b1075fcf9bda42720f"}
+        io.github.kotoba-lang/fs-ifilesystem
+        {:git/url "https://github.com/kotoba-lang/fs-ifilesystem.git"
+         :git/sha "86c46518b60ff14af1001c4a2ced210608fb40c7"}
+        io.github.kotoba-lang/fs-absolute
+        {:git/url "https://github.com/kotoba-lang/fs-absolute.git"
+         :git/sha "cc51c7f1c4cc069c912972b28ad34ba5d6ec810d"}
+        io.github.kotoba-lang/fs-basename
+        {:git/url "https://github.com/kotoba-lang/fs-basename.git"
+         :git/sha "80d5fbf17730410d12446ce95ecb84dc1630b606"}
+        io.github.kotoba-lang/fs-copy
+        {:git/url "https://github.com/kotoba-lang/fs-copy.git"
+         :git/sha "8cdf5da92142a7061d24ff2379da08e0fa98eaba"}
+        io.github.kotoba-lang/fs-dirname
+        {:git/url "https://github.com/kotoba-lang/fs-dirname.git"
+         :git/sha "10b7038ddea10811adbf8af1747dc891c85834f5"}
+        io.github.kotoba-lang/fs-eventual-error-type
+        {:git/url "https://github.com/kotoba-lang/fs-eventual-error-type.git"
+         :git/sha "34ed6aa3badfcb8d234e737487b2341218a923d2"}
+        io.github.kotoba-lang/fs-ext
+        {:git/url "https://github.com/kotoba-lang/fs-ext.git"
+         :git/sha "67f7f59fdd544c6f5d712df5e028c741336d5ddf"}
+        io.github.kotoba-lang/fs-join
+        {:git/url "https://github.com/kotoba-lang/fs-join.git"
+         :git/sha "48702268021e25cc55e54585a60311ff24431167"}
+        io.github.kotoba-lang/fs-mem-filesystem
+        {:git/url "https://github.com/kotoba-lang/fs-mem-filesystem.git"
+         :git/sha "80c7628d1d57d1e66223faacb319df17f33576f0"}
+        io.github.kotoba-lang/fs-normalize
+        {:git/url "https://github.com/kotoba-lang/fs-normalize.git"
+         :git/sha "cbec91e62d7732ff507d04a4000bf79f11f66adf"}
+        io.github.kotoba-lang/fs-relative
+        {:git/url "https://github.com/kotoba-lang/fs-relative.git"
+         :git/sha "4d7d0469ab58f5f194abf190baa82f2c4e453385"}
+        io.github.kotoba-lang/fs-split
+        {:git/url "https://github.com/kotoba-lang/fs-split.git"
+         :git/sha "24f2b92005aa216b45ea4f3bcf11ec2e7be60c1c"}
+        io.github.kotoba-lang/fs-utf8-bytes
+        {:git/url "https://github.com/kotoba-lang/fs-utf8-bytes.git"
+         :git/sha "56e889d2c93babd1837fd384d7c5d5e4dea83329"}
+        io.github.kotoba-lang/fs-utf8-text
+        {:git/url "https://github.com/kotoba-lang/fs-utf8-text.git"
+         :git/sha "6e5513eebd436ce8286676f3dad73830349be3de"}
+
         ;; kotoba.lang.text, not clojure.string. Pinned as an explicit floor:
         ;; tools.deps takes the NEWEST sha it is shown, so without a floor here
         ;; this repo silently rides whatever a sibling happens to name.
