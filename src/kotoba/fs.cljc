@@ -3,7 +3,18 @@
 
   This namespace holds no implementation. It re-exports the definitions
   that each live in their own repo, so a call site can require one name
-  and a library can require only the definitions it actually uses."
+  and a library can require only the definitions it actually uses.
+
+  NOT re-exported here, on purpose: IAsyncFilesystem, IFilesystem. A protocol's identity is what extend-type and reify dispatch on,
+  and a copy would make an implementation silently extend nothing, so the
+  protocol name stays in the one repo that declares it. Requiring that repo
+  is a compile error away; a copy would not be.
+
+  Value vars are not re-exported either: sep. `(def x other/x)` copies, which is harmless for a function and makes
+  with-redefs through this namespace a SILENT no-op for a value -- measured
+  on kotoba.lang.edn, where three assertions passed against nothing at all.
+  Require the repo that defines the value.
+"
   (:refer-clojure :exclude [list read write])
   (:require [kotoba.fs.async-filesystem :as iasync-filesystem-ns]
             [kotoba.fs.filesystem :as ifilesystem-ns]
