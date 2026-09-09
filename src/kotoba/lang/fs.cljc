@@ -10,7 +10,9 @@
   Zero third-party runtime deps; .cljc (JVM / SCI / CLJS / GraalVM / kotoba-WASM)."
   (:refer-clojure :exclude [read write list])
   #?(:clj  (:require [kotoba.lang.text :as str])
-     :cljs (:require [kotoba.lang.text :as str])))
+     :cljs (:require [kotoba.lang.text :as str]))
+  (:require [kotoba.fs.filesystem :as filesystem-p]
+            [kotoba.fs.async-filesystem :as asyncfilesystem-p]))
 
 (def ^:private sep "/")
 
@@ -111,29 +113,31 @@
 
 ;; ---------- IFilesystem protocol (host-injected) ----------
 
-(defprotocol IFilesystem
-  (read       [fs path])
-  (read-bytes [fs path])
-  (write      [fs path content])
-  ;; write-bytes is the missing half of read-bytes. Without it the byte face
-  ;; is read-only, so no byte-exact copy is expressible and every binary
-  ;; round-trip has to go through UTF-8 text -- which silently corrupts any
-  ;; content that is not valid UTF-8.
-  (write-bytes [fs path bytes])
-  (list    [fs path])
-  (exists? [fs path])
-  (delete  [fs path]))
+(def IFilesystem
+  "The protocol itself lives in one repo of its own now. This name is that
+  SAME protocol, not a second one: an implementation reified against either
+  is accepted by both (ADR-2609091900)."
+  filesystem-p/Filesystem)
 
-(defprotocol IAsyncFilesystem
-  "Host-injected, non-blocking filesystem capability. Methods return the host
-  runtime's eventual value (`CompletableFuture` on the JVM, `Promise` on
-  JavaScript). The handle retains the same required root and byte bounds as
-  `IFilesystem`; an eventual value is not ambient authority."
-  (read-async    [fs path])
-  (write-async   [fs path content])
-  (list-async    [fs path])
-  (exists-async? [fs path])
-  (delete-async  [fs path]))
+(def delete filesystem-p/delete)
+(def exists? filesystem-p/exists?)
+(def list filesystem-p/list)
+(def read filesystem-p/read)
+(def read-bytes filesystem-p/read-bytes)
+(def write filesystem-p/write)
+(def write-bytes filesystem-p/write-bytes)
+
+(def IAsyncFilesystem
+  "The protocol itself lives in one repo of its own now. This name is that
+  SAME protocol, not a second one: an implementation reified against either
+  is accepted by both (ADR-2609091900)."
+  asyncfilesystem-p/AsyncFilesystem)
+
+(def delete-async asyncfilesystem-p/delete-async)
+(def exists-async? asyncfilesystem-p/exists-async?)
+(def list-async asyncfilesystem-p/list-async)
+(def read-async asyncfilesystem-p/read-async)
+(def write-async asyncfilesystem-p/write-async)
 
 (defn eventual-error-type
   "Recover a stable `:type` through Promise/SCI or Future wrapper causes.
