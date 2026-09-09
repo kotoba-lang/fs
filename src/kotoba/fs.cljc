@@ -5,6 +5,15 @@
   that each live in their own repo, so a call site can require one name
   and a library can require only the definitions it actually uses.
 
+  AN IMPLEMENTATION BUILT AGAINST kotoba.lang.fs IS NOT ACCEPTED HERE.
+  kotoba.lang.fs still declares IAsyncFilesystem, IFilesystem, and a protocol split into its own
+  repo is a DIFFERENT protocol from the one the source namespace declares
+  (ADR-2609091900). Measured 2026-09-09 on kotoba.lang.fs: a filesystem
+  reified against the source protocol answers through the source namespace
+  and fails through this one -- No implementation of method: :exists?.
+  Build the implementation against the repo that declares the protocol here,
+  or call through kotoba.lang.fs.
+
   NOT re-exported here, on purpose: IAsyncFilesystem, IFilesystem. A protocol's identity is what extend-type and reify dispatch on,
   and a copy would make an implementation silently extend nothing, so the
   protocol name stays in the one repo that declares it. Requiring that repo
