@@ -117,8 +117,8 @@ io.github.kotoba-lang/fs {:git/sha "<sha>"}
 Both runtimes run the same suite, against a real temp directory:
 
 ```sh
-clojure -M:test                                  # JVM
+kbb -M:test                                  # JVM
 npm run test:cljs                                # nbb / Node
-nbb --classpath src:test:../text/src test/run_portable.cljk  # the same thing, without npm
-clojure -M:lint
+kbb --backend sci --classpath src:test:../text/src test/run_portable.cljk  # the same thing, without npm
+kbb -M:lint
 ```

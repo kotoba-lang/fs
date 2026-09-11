@@ -1,6 +1,6 @@
 (ns kotoba.lang.fs-host-test
   "Tests for the host-backed filesystem, against a REAL temp directory, on both
-  runtimes (`clojure -M:test` and `nbb`). Nothing here is mocked: every
+  runtimes (`kbb -M:test` and `nbb`). Nothing here is mocked: every
   assertion is about what the OS actually did.
 
   Every refusal test asserts the refusal's `:type`, not merely that something
@@ -295,8 +295,8 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- read-source
-  "Read a source file relative to the repo root. Both runners (`clojure -M:test`
-  and `nbb --classpath src:test test/run_portable.cljk`) start there. Fails
+  "Read a source file relative to the repo root. Both runners (`kbb -M:test`
+  and `kbb --backend sci --classpath src:test test/run_portable.cljk`) start there. Fails
   loudly if the file cannot be read -- a check that cannot run must not look
   like a check that passed."
   [rel]

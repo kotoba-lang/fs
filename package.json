@@ -2,7 +2,7 @@
   "name": "@kotoba-lang/fs",
   "private": true,
   "scripts": {
-    "test:cljs": "nbb --classpath src:test:../text/src test/run_portable.cljk && nbb --classpath src:test:../text/src test/run_async.cljk"
+    "test:cljs": "kbb --backend sci --classpath src:test:../text/src test/run_portable.cljk && kbb --backend sci --classpath src:test:../text/src test/run_async.cljk"
   },
   "devDependencies": {
     "nbb": "^1.4.210"
