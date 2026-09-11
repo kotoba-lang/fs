@@ -296,7 +296,7 @@
 
 (defn- read-source
   "Read a source file relative to the repo root. Both runners (`clojure -M:test`
-  and `nbb --classpath src:test test/run_portable.cljs`) start there. Fails
+  and `nbb --classpath src:test test/run_portable.cljk`) start there. Fails
   loudly if the file cannot be read -- a check that cannot run must not look
   like a check that passed."
   [rel]
@@ -304,7 +304,7 @@
      :cljs (.readFileSync node-fs rel "utf8")))
 
 (deftest requiring-kotoba-lang-fs-drags-in-no-host-filesystem
-  (let [src (read-source "src/kotoba/lang/fs.cljc")]
+  (let [src (read-source "src/kotoba/lang/fs.cljk")]
     ;; evidence floor: an empty or truncated read must not pass as "clean"
     (is (< 2000 (count src)) "fs.cljc source was actually read")
     (doseq [needle ["java.nio" "java.io" "js/require" "readFileSync" "fs-host"
@@ -313,7 +313,7 @@
           (str "kotoba.lang.fs must stay free of host filesystem dependencies, "
                "found: " needle))))
   ;; and the host namespace is where all of that lives
-  (let [src (read-source "src/kotoba/lang/fs_host.cljc")]
+  (let [src (read-source "src/kotoba/lang/fs_host.cljk")]
     (is (< 2000 (count src)) "fs_host.cljc source was actually read")
     (is (str/includes? src "java.nio"))
     (is (str/includes? src "js/require"))
