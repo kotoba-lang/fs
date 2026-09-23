@@ -5,6 +5,10 @@
  ;; touches the OS directly, only a granted filesystem handle. Zero third-party
  ;; runtime deps; .cljc. See ADR-kotoba-lang-foundational-stdlib.md.
  :deps {
+        ;; kotoba.test (clojure.test-compatible surface), not clojure.test --
+        ;; scripts/migrate-clojure-test-to-kotoba-test.cljk. Explicit floor.
+        io.github.kotoba-lang/test {:git/url "https://github.com/kotoba-lang/test.git"
+                                    :git/sha "2ab4885f99fd25552d380d0f6b0b54c5a72eb7ae"}
         io.github.kotoba-lang/fs-async-filesystem
         {:git/url "https://github.com/kotoba-lang/fs-async-filesystem.git"
          :git/sha "05ce6f3b1dcc3008b7047a13be35c45689cf182e"}

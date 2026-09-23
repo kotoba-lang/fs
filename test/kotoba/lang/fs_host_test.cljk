@@ -8,7 +8,7 @@
   `ex-data`), so a namespace that leaked an `IOException` fails these tests
   rather than passing them."
   (:require [kotoba.lang.text :as str]
-            [clojure.test :refer [deftest is testing]]
+            [kotoba.test :refer [deftest is testing]]
             [kotoba.lang.fs :as fs]
             [kotoba.lang.fs-host :as host])
   #?(:clj (:import (java.io File)
