@@ -11,7 +11,7 @@
   (:refer-clojure :exclude [read write list])
   #?(:clj  (:require [kotoba.lang.text :as str])
      :cljs (:require [kotoba.lang.text :as str]))
-  (:require [kotoba.fs.filesystem :as filesystem-p]
+  (:require [kotoba.bytes :as kbytes] [kotoba.fs.filesystem :as filesystem-p]
             [kotoba.fs.async-filesystem :as asyncfilesystem-p]))
 
 (def ^:private sep "/")
@@ -101,13 +101,13 @@
   "UTF-8 encode `text` into a vector of unsigned bytes (0-255)."
   [text]
   #?(:clj  (mapv #(bit-and (long %) 0xff)
-                 (.getBytes ^String (str text) "UTF-8"))
+                 (kbytes/utf8-bytes ^String (str text)))
      :cljs (vec (.encode (js/TextEncoder.) (str text)))))
 
 (defn utf8-text
   "Decode a collection of unsigned bytes (0-255) as UTF-8 text."
   [bytes]
-  #?(:clj  (String. (byte-array (mapv #(unchecked-byte (long %)) bytes)) "UTF-8")
+  #?(:clj  (kbytes/utf8-string (byte-array (mapv #(unchecked-byte (long %)) bytes)))
      :cljs (.decode (js/TextDecoder. "utf-8")
                     (js/Uint8Array.from (into-array (mapv int bytes))))))
 
