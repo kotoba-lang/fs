@@ -70,10 +70,9 @@
   `nil`, matching the mem impl.
 
   Zero third-party deps."
-  (:require [kotoba.lang.text :as str]
+  (:require [kotoba.bytes :as kbytes] [kotoba.lang.text :as str]
             [kotoba.lang.fs :as fs])
   #?(:clj (:import (java.io File)
-                   (java.nio.charset StandardCharsets)
                    (java.nio.file Files OpenOption)
                    (java.util.concurrent CompletableFuture)
                    (java.util.function Supplier))))
@@ -107,7 +106,7 @@
    (throw (ex-info message (assoc data :type type)))))
 
 (defn- utf8-byte-count [s]
-  #?(:clj  (alength (.getBytes ^String (str s) StandardCharsets/UTF_8))
+  #?(:clj  (alength (kbytes/utf8-bytes ^String (str s)))
      :cljs (.-length (.from js/Buffer (str s) "utf8"))))
 
 ;; ---------------------------------------------------------------------------
@@ -247,11 +246,11 @@
                                            {:fs/path (str path)
                                             :fs/message (.getMessage e)})))]
                  (bounded! (alength ^bytes bytes) max-bytes "file" (str path))
-                 (String. ^bytes bytes StandardCharsets/UTF_8))))
+                 (kbytes/utf8-string ^bytes bytes))))
 
            (write [_ path content]
              (let [^File f (resolve-file root-c path)
-                   ^bytes bytes (.getBytes (str content) StandardCharsets/UTF_8)]
+                   ^bytes bytes (kbytes/utf8-bytes (str content))]
                (bounded! (alength bytes) max-bytes "content" (str path))
                (prepare-write! root-c f path)
                (jvm-write-bytes! f path bytes)))

@@ -7,11 +7,11 @@
   threw. `refusal-type` returns `nil` when a raw host exception escapes (no
   `ex-data`), so a namespace that leaked an `IOException` fails these tests
   rather than passing them."
-  (:require [kotoba.lang.text :as str]
+  (:require [kotoba.bytes :as kbytes] [kotoba.io :as kio] [kotoba.lang.text :as str]
             [kotoba.test :refer [deftest is testing]]
             [kotoba.lang.fs :as fs]
             [kotoba.lang.fs-host :as host])
-  #?(:clj (:import (java.io File)
+  #?(:clj (:import
                    (java.nio.file Files OpenOption Paths)
                    (java.nio.file.attribute FileAttribute))))
 
@@ -37,19 +37,18 @@
   that what the handle wrote really landed, and that what it refused really
   did exist and really was reachable without it."
   [abs]
-  #?(:clj  (String. (Files/readAllBytes (Paths/get (str abs) (into-array String [])))
-                    "UTF-8")
+  #?(:clj  (kbytes/utf8-string (Files/readAllBytes (Paths/get (str abs) (into-array String []))))
      :cljs (.readFileSync node-fs (str abs) "utf8")))
 
 (defn- spit-real [abs content]
   #?(:clj  (do (Files/write (Paths/get (str abs) (into-array String []))
-                            (.getBytes ^String content "UTF-8")
+                            (kbytes/utf8-bytes ^String content)
                             (into-array OpenOption []))
                (str abs))
      :cljs (do (.writeFileSync node-fs (str abs) content "utf8") (str abs))))
 
 (defn- exists-real? [abs]
-  #?(:clj  (.exists (File. (str abs)))
+  #?(:clj  (kio/exists? (kio/file (str abs)))
      :cljs (.existsSync node-fs (str abs))))
 
 (defn- mkdir! [p]
@@ -70,7 +69,7 @@
   `ex-data` -- which is a failure of these tests, not a pass."
   [f]
   (try (f) ::no-throw
-       (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) e
+       (catch :default e
          (:type (ex-data e)))))
 
 (defn- fs-under [root & {:as opts}]
@@ -222,7 +221,7 @@
     (is (= "0123456789" (fs/read tight "small.txt")))
     ;; the refusal carries the numbers a caller needs to explain itself
     (try (fs/read tight "big.txt")
-         (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) e
+         (catch :default e
            (is (= 100 (:fs/size (ex-data e))))
            (is (= 16 (:fs/max-bytes (ex-data e))))))
     ;; the same bound applies to write, so this handle cannot create a file it
@@ -238,7 +237,7 @@
     (is (= :fs/not-found (refusal-type #(fs/list h "nope"))))
     ;; the message and data are ours, not the host's
     (try (fs/read h "nope.txt")
-         (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) e
+         (catch :default e
            (is (= "no such file" (ex-message e)))
            (is (= "nope.txt" (:fs/path (ex-data e))))))))
 
